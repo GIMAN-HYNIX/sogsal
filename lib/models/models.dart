@@ -118,18 +118,99 @@ class BodyComposition {
 class CharacterStyle {
   final int hairColor;
   final int outfitColor;
+  final int skinColor;
+  final String? hairStyle; // null이면 성별 기본(여자 보브, 남자 짧은 머리)
 
-  const CharacterStyle({this.hairColor = 0xFF1E2346, this.outfitColor = 0xFF3A6FD8});
+  static const defaultSkin = 0xFFF5C3A8;
 
-  CharacterStyle copyWith({int? hairColor, int? outfitColor}) => CharacterStyle(
+  const CharacterStyle({
+    this.hairColor = 0xFF1E2346,
+    this.outfitColor = 0xFF3A6FD8,
+    this.skinColor = defaultSkin,
+    this.hairStyle,
+  });
+
+  CharacterStyle copyWith({int? hairColor, int? outfitColor, int? skinColor, String? hairStyle}) => CharacterStyle(
         hairColor: hairColor ?? this.hairColor,
         outfitColor: outfitColor ?? this.outfitColor,
+        skinColor: skinColor ?? this.skinColor,
+        hairStyle: hairStyle ?? this.hairStyle,
       );
 
-  Map<String, dynamic> toJson() => {'hairColor': hairColor, 'outfitColor': outfitColor};
+  Map<String, dynamic> toJson() => {
+        'hairColor': hairColor,
+        'outfitColor': outfitColor,
+        'skinColor': skinColor,
+        if (hairStyle != null) 'hairStyle': hairStyle,
+      };
 
   factory CharacterStyle.fromJson(Map<String, dynamic> j) => CharacterStyle(
         hairColor: j['hairColor'] as int? ?? 0xFF1E2346,
         outfitColor: j['outfitColor'] as int? ?? 0xFF3A6FD8,
+        skinColor: j['skinColor'] as int? ?? defaultSkin,
+        hairStyle: j['hairStyle'] as String?,
+      );
+}
+
+/// 눈바디로 맞춘 부위별 보정. 각 값은 -1(가늘게) ~ 1(굵게), 0이면 숫자로 계산한 그대로.
+class BodyTweak {
+  final double shoulder, waist, hip, arm, thigh;
+
+  const BodyTweak({this.shoulder = 0, this.waist = 0, this.hip = 0, this.arm = 0, this.thigh = 0});
+
+  static const none = BodyTweak();
+
+  bool get isNone => shoulder == 0 && waist == 0 && hip == 0 && arm == 0 && thigh == 0;
+
+  BodyTweak copyWith({double? shoulder, double? waist, double? hip, double? arm, double? thigh}) => BodyTweak(
+        shoulder: shoulder ?? this.shoulder,
+        waist: waist ?? this.waist,
+        hip: hip ?? this.hip,
+        arm: arm ?? this.arm,
+        thigh: thigh ?? this.thigh,
+      );
+
+  static BodyTweak lerp(BodyTweak a, BodyTweak b, double t) => BodyTweak(
+        shoulder: a.shoulder + (b.shoulder - a.shoulder) * t,
+        waist: a.waist + (b.waist - a.waist) * t,
+        hip: a.hip + (b.hip - a.hip) * t,
+        arm: a.arm + (b.arm - a.arm) * t,
+        thigh: a.thigh + (b.thigh - a.thigh) * t,
+      );
+
+  Map<String, dynamic> toJson() => {'shoulder': shoulder, 'waist': waist, 'hip': hip, 'arm': arm, 'thigh': thigh};
+
+  factory BodyTweak.fromJson(Map<String, dynamic> j) {
+    double v(String k) => ((j[k] as num?)?.toDouble() ?? 0).clamp(-1.0, 1.0);
+    return BodyTweak(shoulder: v('shoulder'), waist: v('waist'), hip: v('hip'), arm: v('arm'), thigh: v('thigh'));
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is BodyTweak &&
+      other.shoulder == shoulder &&
+      other.waist == waist &&
+      other.hip == hip &&
+      other.arm == arm &&
+      other.thigh == thigh;
+
+  @override
+  int get hashCode => Object.hash(shoulder, waist, hip, arm, thigh);
+}
+
+/// 눈바디 사진. 폰 안에만 저장한다(줄인 JPEG를 base64로).
+class BodyPhoto {
+  final String id;
+  final DateTime date;
+  final String jpegBase64;
+
+  const BodyPhoto({required this.id, required this.date, required this.jpegBase64});
+
+  Map<String, dynamic> toJson() => {'id': id, 'date': date.toIso8601String(), 'jpeg': jpegBase64};
+
+  factory BodyPhoto.fromJson(Map<String, dynamic> j) => BodyPhoto(
+        id: j['id'] as String,
+        date: DateTime.parse(j['date'] as String),
+        jpegBase64: j['jpeg'] as String,
       );
 }

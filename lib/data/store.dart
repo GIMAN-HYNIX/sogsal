@@ -10,10 +10,14 @@ import '../models/models.dart';
 
 class AppStore extends ChangeNotifier {
   static const _key = 'sogsal_state_v1';
+  static const _photoKey = 'sogsal_photos_v1'; // 사진은 커서 따로 둔다
+  static const maxPhotos = 12;
 
   UserProfile? profile;
   List<BodyComposition> records = [];
   CharacterStyle style = const CharacterStyle();
+  BodyTweak tweak = BodyTweak.none;
+  List<BodyPhoto> photos = []; // 오래된 것부터
   bool loaded = false;
 
   bool get onboarded => profile != null && records.isNotEmpty;
@@ -45,6 +49,16 @@ class AppStore extends ChangeNotifier {
         if (j['style'] != null) {
           style = CharacterStyle.fromJson(j['style'] as Map<String, dynamic>);
         }
+        if (j['tweak'] != null) {
+          tweak = BodyTweak.fromJson(j['tweak'] as Map<String, dynamic>);
+        }
+      }
+      final rawPhotos = prefs.getString(_photoKey);
+      if (rawPhotos != null) {
+        photos = [
+          for (final p in (jsonDecode(rawPhotos) as List))
+            BodyPhoto.fromJson(p as Map<String, dynamic>),
+        ]..sort((a, b) => a.date.compareTo(b.date));
       }
     } catch (_) {
       // 저장소가 깨졌으면 처음부터 시작한다.
@@ -61,8 +75,18 @@ class AppStore extends ChangeNotifier {
         'profile': profile?.toJson(),
         'records': [for (final r in records) r.toJson()],
         'style': style.toJson(),
+        'tweak': tweak.toJson(),
       }),
     );
+  }
+
+  Future<bool> _savePhotos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return await prefs.setString(_photoKey, jsonEncode([for (final p in photos) p.toJson()]));
+    } catch (_) {
+      return false; // 브라우저 저장 공간이 꽉 찼을 때
+    }
   }
 
   void completeOnboarding(UserProfile p, BodyComposition first) {
@@ -108,13 +132,44 @@ class AppStore extends ChangeNotifier {
     _save();
   }
 
+  void updateTweak(BodyTweak t) {
+    tweak = t;
+    notifyListeners();
+    _save();
+  }
+
+  /// 줄인 JPEG를 넣는다. 저장 공간이 모자라면 넣지 않고 false.
+  Future<bool> addPhoto(String jpegBase64) async {
+    final p = BodyPhoto(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      date: DateTime.now(),
+      jpegBase64: jpegBase64,
+    );
+    final before = List<BodyPhoto>.of(photos);
+    photos = [...photos, p];
+    if (photos.length > maxPhotos) photos = photos.sublist(photos.length - maxPhotos);
+    final ok = await _savePhotos();
+    if (!ok) photos = before;
+    notifyListeners();
+    return ok;
+  }
+
+  Future<void> deletePhoto(String id) async {
+    photos = photos.where((p) => p.id != id).toList();
+    notifyListeners();
+    await _savePhotos();
+  }
+
   Future<void> reset() async {
     profile = null;
     records = [];
     style = const CharacterStyle();
+    tweak = BodyTweak.none;
+    photos = [];
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
+    await prefs.remove(_photoKey);
   }
 
   static bool _sameDay(DateTime a, DateTime b) =>

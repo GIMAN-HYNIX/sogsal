@@ -63,6 +63,7 @@ class HomeScreen extends StatelessWidget {
                 gender: p.gender,
                 shape: store.shape,
                 style: store.style,
+                tweak: store.tweak,
                 tired: type.isWarning,
                 height: 340,
                 onPartTap: (part) => showPartSheet(context, part),

@@ -85,7 +85,7 @@ class MyScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('모든 기록을 지울까요?'),
-        content: const Text('프로필과 체성분 기록이 모두 사라지고 되돌릴 수 없어요.'),
+        content: const Text('프로필, 체성분 기록, 눈바디 사진이 모두 사라지고 되돌릴 수 없어요.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('그대로 두기')),
           TextButton(

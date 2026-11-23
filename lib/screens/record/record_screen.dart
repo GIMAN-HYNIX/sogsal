@@ -1,4 +1,4 @@
-// 기록 탭: 체중·체성분 기록 추가와 지난 기록 목록.
+// 기록 탭: 체중·체성분·눈바디 기록 추가와 지난 기록 목록.
 import 'package:flutter/material.dart';
 
 import '../../data/store.dart';
@@ -7,6 +7,7 @@ import '../../theme.dart';
 import '../../widgets/ui.dart';
 import '../home/home_screen.dart' show showWeightSheet;
 import '../my/recalibrate_screen.dart';
+import '../noonbody/noonbody_screen.dart';
 
 class RecordScreen extends StatelessWidget {
   const RecordScreen({super.key});
@@ -41,6 +42,18 @@ class RecordScreen extends StatelessWidget {
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const RecalibrateScreen()),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkButton(
+                    label: '눈바디',
+                    icon: Icons.add,
+                    outlined: true,
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NoonbodyScreen()),
                     ),
                   ),
                 ),

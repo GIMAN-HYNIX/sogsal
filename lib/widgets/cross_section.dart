@@ -28,6 +28,7 @@ class CrossSection extends StatelessWidget {
   final double? visceralLevel;
   final bool female;
   final double width;
+  final Color skin;
 
   const CrossSection({
     super.key,
@@ -36,6 +37,7 @@ class CrossSection extends StatelessWidget {
     this.visceralLevel,
     this.female = false,
     this.width = 340,
+    this.skin = _skinInk,
   });
 
   static double aspect(BodyPart p) => switch (p) {
@@ -59,7 +61,7 @@ class CrossSection extends StatelessWidget {
           height: width * aspect(part),
           child: CustomPaint(
             painter: _SectionPainter(
-                part, shape.fatness, shape.muscle, female, visceralLevel ?? 5),
+                part, shape.fatness, shape.muscle, female, visceralLevel ?? 5, skin),
           ),
         ),
       );
@@ -69,7 +71,8 @@ class _SectionPainter extends CustomPainter {
   final BodyPart part;
   final double fat, mus, level;
   final bool female;
-  _SectionPainter(this.part, this.fat, this.mus, this.female, this.level);
+  final Color skin;
+  _SectionPainter(this.part, this.fat, this.mus, this.female, this.level, this.skin);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -81,14 +84,15 @@ class _SectionPainter extends CustomPainter {
       BodyPart.thigh => _LimbSection(fat, mus, thigh: true, female: female),
       BodyPart.chest => _ChestSection(fat, mus, female),
       BodyPart.belly => _BellySection(fat, mus, level),
-    };
+    }
+      ..skin = skin;
     s.paint(canvas, Size(320, size.height / k));
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_SectionPainter o) =>
-      o.part != part || o.fat != fat || o.mus != mus || o.female != female || o.level != level;
+      o.part != part || o.fat != fat || o.mus != mus || o.female != female || o.level != level || o.skin != skin;
 }
 
 // =====================================================================
@@ -187,6 +191,7 @@ class _Callout {
 /// 그래서 살이 많아도 그림이 넘치지 않고, 대신 층 두께 비율로 차이가 보인다.
 abstract class _Section {
   final double fat, mus;
+  Color skin = _skinInk;
   _Section(this.fat, this.mus);
 
   late Offset _o;
@@ -337,7 +342,7 @@ class _LimbSection extends _Section {
 
   @override
   void draw(Canvas c) {
-    _piece(c, _polar(rs), _skinInk, seed: 1, base: 0.5, spacing: 4.4, line: 1.8);
+    _piece(c, _polar(rs), skin, seed: 1, base: 0.5, spacing: 4.4, line: 1.8);
     _piece(c, _polar(rf), _fatInk, seed: 2, base: 0.5, spacing: 4.2, angle: 0.6, line: 1.6);
     final core = _polar(rm);
     _piece(c, core, _coreInk, seed: 3, base: 0.7, spacing: 6, line: 1.6, hatchW: 1.6);
@@ -413,7 +418,7 @@ class _ChestSection extends _Section {
 
   @override
   void draw(Canvas c) {
-    _piece(c, _polar(rS), _skinInk, seed: 1, base: 0.5, spacing: 4.4, line: 1.8);
+    _piece(c, _polar(rS), skin, seed: 1, base: 0.5, spacing: 4.4, line: 1.8);
     _piece(c, _polar(rF), _fatInk, seed: 2, base: 0.5, spacing: 4.2, angle: 0.6, line: 1.6);
     final musOut = _polar(rMus), inside = _polar(rIn);
     _piece(c, musOut, _coreInk, seed: 3, base: 0.7, spacing: 6, line: 1.6, hatchW: 1.6);
@@ -509,7 +514,7 @@ class _BellySection extends _Section {
 
   @override
   void draw(Canvas c) {
-    _piece(c, _polar(rS, n: 360), _skinInk, seed: 1, base: 0.5, spacing: 4.4, line: 1.8);
+    _piece(c, _polar(rS, n: 360), skin, seed: 1, base: 0.5, spacing: 4.4, line: 1.8);
     _piece(c, _polar(rF, n: 360), _fatInk, seed: 2, base: 0.5, spacing: 4.2, angle: 0.6, line: 1.6);
     final musOut = _polar(rMus), inside = _polar(rIn);
     _piece(c, musOut, _coreInk, seed: 3, base: 0.7, spacing: 6, line: 1.6, hatchW: 1.6);

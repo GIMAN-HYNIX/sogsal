@@ -51,6 +51,7 @@ class _PartSheet extends StatelessWidget {
                   shape: s,
                   visceralLevel: d.visceralLevel,
                   female: p.gender == Gender.female,
+                  skin: Color(store.style.skinColor),
                   width: c.maxWidth.clamp(240.0, 420.0),
                 ),
               ),

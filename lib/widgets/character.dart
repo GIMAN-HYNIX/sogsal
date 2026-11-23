@@ -12,13 +12,13 @@ import '../models/models.dart';
 import '../theme.dart';
 import 'riso_paint.dart';
 
-// 단면 그림의 피부와 같은 크레용 색
-const _skinInk = Color(0xFFF5C3A8);
+part 'hair_styles.dart';
 
 class CharacterView extends StatelessWidget {
   final Gender gender;
   final BodyShape shape;
   final CharacterStyle style;
+  final BodyTweak tweak; // 눈바디로 맞춘 부위별 보정
   final bool tired;
   final ValueChanged<BodyPart>? onPartTap; // 있으면 부위 이름표를 단다
   final double height;
@@ -28,6 +28,7 @@ class CharacterView extends StatelessWidget {
     required this.gender,
     required this.shape,
     required this.style,
+    this.tweak = BodyTweak.none,
     this.tired = false,
     this.onPartTap,
     this.height = 320,
@@ -55,6 +56,9 @@ class CharacterView extends StatelessWidget {
           mus: v.dy,
           hair: Color(style.hairColor),
           outfit: Color(style.outfitColor),
+          skin: Color(style.skinColor),
+          hairId: HairStyles.resolve(gender, style.hairStyle),
+          tweak: tweak,
           tired: tired,
         );
         if (onPartTap == null) {
@@ -174,6 +178,49 @@ class _LeaderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_LeaderPainter o) => true;
+}
+
+/// 꾸미기에서 머리 스타일 고를 때 쓰는 얼굴 부분만 자른 그림.
+class CharacterHead extends StatelessWidget {
+  final Gender gender;
+  final BodyShape shape;
+  final CharacterStyle style;
+  final double size;
+
+  const CharacterHead({super.key, required this.gender, required this.shape, required this.style, this.size = 64});
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        size: Size.square(size),
+        painter: _HeadPainter(_Figure(
+          female: gender == Gender.female,
+          f: shape.fatness,
+          mus: shape.muscle,
+          hair: Color(style.hairColor),
+          outfit: Color(style.outfitColor),
+          skin: Color(style.skinColor),
+          hairId: HairStyles.resolve(gender, style.hairStyle),
+          tired: false,
+        )),
+      );
+}
+
+class _HeadPainter extends CustomPainter {
+  final _Figure fig;
+  _HeadPainter(this.fig);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 정수리 위(똥머리·포니테일)부터 어깨까지
+    final side = fig.hh * 1.62, top = _Figure.top - fig.hh * 0.34;
+    canvas.clipRect(Offset.zero & size);
+    canvas.scale(size.width / side);
+    canvas.translate(-(100 - side / 2), -top);
+    fig.paint(canvas);
+  }
+
+  @override
+  bool shouldRepaint(_HeadPainter o) => !fig.same(o.fig);
 }
 
 class _CharacterPainter extends CustomPainter {
@@ -341,11 +388,11 @@ const _navel = 3.0, _iliac = 3.2, _troch = 3.5, _crotch = 3.98, _knee = 5.72, _a
 class _Dims {
   final double f;
   final bool female;
-  late final double neck, acro, trapDrop, chest, waist, iliac, hip, thigh, knee, calf, ankle;
-  late final double uarm, farm, wrist, hand, belly;
+  late double neck, acro, trapDrop, chest, waist, iliac, hip, thigh, knee, calf, ankle;
+  late double uarm, farm, wrist, hand, belly;
 
-  /// f: 마름 0 ~ 통통 1, mus: 근육 0 ~ 1 (0.5가 보통)
-  _Dims(this.f, this.female, double mus) {
+  /// f: 마름 0 ~ 통통 1, mus: 근육 0 ~ 1 (0.5가 보통), tw: 눈바디 보정
+  _Dims(this.f, this.female, double mus, [BodyTweak tw = BodyTweak.none]) {
     double k(double a, double b, double c) => f < 0.5 ? _lerp(a, b, f * 2) : _lerp(b, c, (f - 0.5) * 2);
     final m = mus - 0.5;
     if (female) {
@@ -383,6 +430,18 @@ class _Dims {
       hand = k(8, 8.4, 9.4);
       belly = k(0, 0.15, 1);
     }
+    // 눈바디 보정: 숫자로 그린 몸에서 부위별로 넓히거나 좁힌다
+    acro *= 1 + 0.09 * tw.shoulder;
+    chest *= 1 + 0.05 * tw.shoulder;
+    waist *= 1 + 0.16 * tw.waist;
+    belly *= 1 + 0.5 * tw.waist;
+    iliac *= 1 + 0.12 * tw.hip;
+    hip *= 1 + 0.12 * tw.hip;
+    uarm *= 1 + 0.22 * tw.arm;
+    farm *= 1 + 0.14 * tw.arm;
+    thigh *= 1 + 0.16 * tw.thigh;
+    knee *= 1 + 0.06 * tw.thigh;
+    calf *= 1 + 0.1 * tw.thigh;
   }
 }
 
@@ -410,7 +469,9 @@ class _Arm {
 class _Figure {
   final bool female, tired;
   final double f, mus;
-  final Color hair, outfit;
+  final Color hair, outfit, skin;
+  final String hairId;
+  final BodyTweak tweak;
 
   late final _Dims d;
   late final double waistLv, hj, thighT0, armT0;
@@ -428,9 +489,12 @@ class _Figure {
     required this.mus,
     required this.hair,
     required this.outfit,
+    required this.skin,
+    required this.hairId,
+    this.tweak = BodyTweak.none,
     required this.tired,
   }) {
-    d = _Dims(f, female, mus);
+    d = _Dims(f, female, mus, tweak);
     waistLv = female ? 2.72 : 2.86;
     neckPit = Offset(100, _yl(_pit));
     pelvis = Offset(100, _yl(_troch));
@@ -472,7 +536,15 @@ class _Figure {
   }
 
   bool same(_Figure o) =>
-      o.female == female && o.f == f && o.mus == mus && o.hair == hair && o.outfit == outfit && o.tired == tired;
+      o.female == female &&
+      o.f == f &&
+      o.mus == mus &&
+      o.hair == hair &&
+      o.outfit == outfit &&
+      o.skin == skin &&
+      o.hairId == hairId &&
+      o.tweak == tweak &&
+      o.tired == tired;
 
   /// 뼈대 좌표 → 3등신 화면 좌표
   Offset t(Offset p) {
@@ -666,10 +738,9 @@ class _Figure {
   }
 
   /// 머리 윤곽을 따라 왼쪽 yL → 정수리 → 오른쪽 yR, 바깥으로 vol(px)만큼 띄운 점들
-  List<Offset> _cap(double vol, double yL, double yR, [double? volTop]) {
+  List<Offset> _cap(double vol, double yL, double yR, [double? volTop, int n = 12]) {
     final vt = volTop ?? vol, c = hd(0, 0.5);
     Offset out(Offset p, double v) => p + _norm(p - c) * v;
-    const n = 12;
     return [
       for (var k = 0; k <= n; k++)
         () {
@@ -695,20 +766,29 @@ class _Figure {
   // ===================================================================
   void paint(Canvas c) {
     final dark = Color.lerp(outfit, Riso.ink, 0.38)!;
-    final hairOpt = (base: 0.62, spacing: 3.0, width: 2.1, angle: 1.2, lw: 1.5);
-    void hairPiece(List<_Q> q, int seed) => _piece(c, q, hair,
-        seed: seed, base: hairOpt.base, spacing: hairOpt.spacing, width: hairOpt.width, angle: hairOpt.angle, lw: hairOpt.lw);
+    final hs = _hairSet(hairId);
+    var hseed = 27;
+    final shortInk = Color.lerp(hair, skin, 0.5)!;
+    void drawHair(List<_HP> list) {
+      for (final q in list) {
+        final seed = hseed++;
+        switch (q.kind) {
+          case _HK.tie:
+            _piece(c, q.pts, Riso.pink, seed: seed, base: 0.45, spacing: 2.4, width: 1.6, angle: -0.6, lw: 1.3);
+          case _HK.short:
+            _piece(c, q.pts, shortInk, seed: seed, base: 0.5, spacing: 2.6, width: 1.4, angle: 1.2, lw: 1.5);
+          case _HK.hair:
+            _piece(c, q.pts, hair, seed: seed, base: 0.62, spacing: 3.0, width: 2.1, angle: 1.2, lw: 1.5);
+        }
+      }
+    }
 
     // 발밑 그림자
     final shadow = Path()..addPolygon(_ellipse(const Offset(100, sole + 2), (46 + 16 * f) * sxk, 6, 24), true);
     Hand.hatch(c, shadow, Riso.ink.withValues(alpha: 0.22), angle: -0.3, spacing: 3, width: 1.4, base: 0, seed: 2);
 
     // ---------- 뒷머리 ----------
-    if (female) {
-      hairPiece(
-          _sym([(0, -0.045, false), (0.3, -0.03, false), (0.49, 0.09, false), (0.6, 0.27, false), (0.62, 0.48, false), (0.63, 0.7, false), (0.65, 0.88, false), (0.62, 1.01, true), (0.5, 1.04, false), (0.38, 1.02, true), (0.33, 0.88, false), (0.3, 0.7, false)]),
-          27);
-    }
+    drawHair(hs.back);
 
     // ---------- 몸 (목+몸통+팔+다리 한 덩어리) ----------
     final inners = legInners();
@@ -756,7 +836,7 @@ class _Figure {
     }
 
     final body = [...side(-1), ...side(1).reversed];
-    _piece(c, tq(body), _skinInk, seed: 11);
+    _piece(c, tq(body), skin, seed: 11);
     // 팔이 몸통 앞에 겹친 부분의 팔 안쪽 선
     for (final o in overlap.values) {
       if (o.length < 2) continue;
@@ -897,18 +977,19 @@ class _Figure {
     }
 
     // ---------- 귀, 얼굴 ----------
-    if (!female) {
+    if (hs.ears) {
       for (final s in [-1, 1]) {
-        _piece(c, _qs(_ellipse(hd(s * 0.525, 0.585), hh * 0.085, hh * 0.13, 14)), _skinInk,
+        _piece(c, _qs(_ellipse(hd(s * 0.525, 0.585), hh * 0.085, hh * 0.13, 14)), skin,
             seed: 70 + s, spacing: 3.2, width: 2, lw: 1.4);
       }
     }
+    drawHair(hs.mid);
     final prof = _prof;
     final head = [
       for (final (l, w) in prof) hd(w / 2, l),
       for (final (l, w) in prof.sublist(1, prof.length - 1).reversed) hd(-w / 2, l),
     ];
-    _piece(c, _qs(head), _skinInk, seed: 29, base: 0.4, spacing: 4, width: 2.4);
+    _piece(c, _qs(head), skin, seed: 29, base: 0.4, spacing: 4, width: 2.4);
 
     // 볼
     for (final s in [-1, 1]) {
@@ -969,16 +1050,11 @@ class _Figure {
     }
 
     // ---------- 앞머리 ----------
-    if (female) {
-      hairPiece([
-        ..._wrap(_cap(2.5, 0.62, 0.62)),
-        ..._hp([(0.47, 0.48, false), (0.38, 0.35, false), (0.22, 0.27, false), (0.04, 0.25, true), (-0.04, 0.3, false), (-0.2, 0.28, false), (-0.38, 0.35, false), (-0.47, 0.48, false)]),
-      ], 31);
-    } else {
-      hairPiece([
-        ..._wrap(_cap(3.5, 0.52, 0.52, 4.5)),
-        ..._hp([(0.49, 0.5, false), (0.47, 0.36, false), (0.41, 0.27, false), (0.22, 0.21, false), (0.0, 0.24, true), (-0.16, 0.17, false), (-0.36, 0.23, false), (-0.46, 0.33, false), (-0.49, 0.5, false)]),
-      ], 31);
+    drawHair(hs.top);
+    drawHair(hs.front);
+    drawHair(hs.over);
+    for (final l in hs.lines) {
+      _line(c, l.pts, alpha: l.alpha, lw: 1.2, seed: hseed++);
     }
 
     // 지쳤을 때 땀방울
