@@ -45,6 +45,20 @@ class BodyCalc {
     return weightKg / (m * m);
   }
 
+  /// 키·몸무게·나이만으로 보통 체지방률을 어림한다(Deurenberg 1991, BMI 기반).
+  /// 세부 수치를 모를 때 채워 넣는 참고값이라 실제와 꽤 다를 수 있다.
+  static double standardFatPercent({
+    required Gender gender,
+    required double heightCm,
+    required double weightKg,
+    int? age,
+  }) {
+    final male = gender == Gender.male;
+    final a = (age ?? 30).clamp(18, 80);
+    final bf = 1.2 * bmi(weightKg, heightCm) + 0.23 * a - (male ? 10.8 : 0) - 5.4;
+    return bf.clamp(male ? 5.0 : 10.0, male ? 40.0 : 48.0).toDouble();
+  }
+
   /// 미 해군법(US Navy) 체지방률 추정. 단위 cm.
   /// 여성은 엉덩이 둘레가 필요하다.
   static double? navyBodyFatPercent({

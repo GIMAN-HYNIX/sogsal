@@ -270,7 +270,7 @@ class InkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    final fg = outlined ? Riso.ink : (enabled ? Colors.white : Riso.faint);
+    final fg = enabled ? (outlined ? Riso.ink : Colors.white) : Riso.faint;
     final bg = outlined ? Riso.sheet : (enabled ? Riso.ink : const Color(0xFFDDDFE6));
     return Semantics(
       button: true,
@@ -280,7 +280,7 @@ class InkButton extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
           side: outlined
-              ? const BorderSide(color: Riso.ink, width: 1.5)
+              ? BorderSide(color: enabled ? Riso.ink : Riso.lineStrong, width: 1.5)
               : BorderSide.none,
         ),
         child: InkWell(

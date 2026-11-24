@@ -42,6 +42,7 @@ class RecalibrateScreen extends StatelessWidget {
                   BodyCompForm(
                     gender: p.gender,
                     heightCm: p.heightCm,
+                    age: p.age,
                     initialWeightKg: store.latest?.weightKg,
                     submitLabel: '기록하기',
                     onSubmit: (b) {

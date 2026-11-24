@@ -102,6 +102,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               1 => BodyCompForm(
                                   gender: _profile!.gender,
                                   heightCm: _profile!.heightCm,
+                                  age: _profile!.age,
                                   initialWeightKg: parseNum(_weight),
                                   submitLabel: '캐릭터 만들기',
                                   onSubmit: (b) => setState(() {
