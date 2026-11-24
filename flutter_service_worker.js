@@ -1,5 +1,5 @@
 // make_sw.py가 만든 파일. 직접 고치지 말 것.
-const VERSION = 'b122df0134f3';
+const VERSION = 'cc8e94af0c24';
 const CACHE = 'sogsal-' + VERSION;
 const CORE = ["./", "assets/AssetManifest.bin", "assets/AssetManifest.bin.json", "assets/AssetManifest.json", "assets/FontManifest.json", "favicon.png", "flutter.js", "flutter_bootstrap.js", "index.html", "main.dart.js", "manifest.json"];
 
